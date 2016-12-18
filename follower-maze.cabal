@@ -25,6 +25,7 @@ executable follower-maze-exe
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N -Wall -Werror
   build-depends:       base
                      , follower-maze
+                     , network
   default-language:    Haskell2010
 
 test-suite follower-maze-test
