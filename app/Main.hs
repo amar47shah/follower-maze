@@ -19,25 +19,31 @@ main = do
 listen :: Int -> IO Socket
 listen = listenOn . PortNumber . fromIntegral
 
-data Event = Message  User User
-           | Follow   User User
-           | Unfollow User User
-           | Update   User
-           | Broadcast
-           deriving Show
+data Event = Event
+  { eventRaw  :: String
+  , eventSeq  :: Integer
+  , eventComm :: Comm
+  } deriving Show
+
+data Comm = Message  User User
+          | Follow   User User
+          | Unfollow User User
+          | Update   User
+          | Broadcast
+          deriving Show
 
 type User = String
 
-parseEvent :: String -> (Integer, Event)
-parseEvent = match . splitOn '|'
+parseEvent :: String -> Event
+parseEvent = match <*> splitOn '|'
       where
-  match :: [String] -> (Integer, Event)
-  match (n:"P":from:to:[]) = (read n, Message  from to)
-  match (n:"F":from:to:[]) = (read n, Follow   from to)
-  match (n:"U":from:to:[]) = (read n, Unfollow from to)
-  match (n:"S":from   :[]) = (read n, Update   from)
-  match (n:"B"        :[]) = (read n, Broadcast)
-  match _                  = error "Unrecognized event"
+  match :: String -> [String] -> Event
+  match r (n:"P":from:to:[]) = Event r (read n) $ Message  from to
+  match r (n:"F":from:to:[]) = Event r (read n) $ Follow   from to
+  match r (n:"U":from:to:[]) = Event r (read n) $ Unfollow from to
+  match r (n:"S":from   :[]) = Event r (read n) $ Update   from
+  match r (n:"B"        :[]) = Event r (read n) $ Broadcast
+  match _ _                  = error "Unrecognized event"
 
 splitOn :: Eq a => a -> [a] -> [[a]]
 splitOn = unfoldr . splitOnceOn
