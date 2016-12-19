@@ -1,23 +1,47 @@
 module Main where
 
+import Control.Concurrent (forkFinally)
+import Control.Concurrent.STM.TVar (TVar, newTVarIO, readTVar, writeTVar)
 import Control.Monad (replicateM_)
+import Control.Monad.STM (atomically)
 import Data.List (unfoldr)
 import Network (PortID (PortNumber), accept, Socket, listenOn)
-import System.IO (hClose, hGetLine)
+import System.IO (Handle, hClose, hGetLine)
 
 main :: IO ()
 main = do
-  sockSource <- listen 9090
-  (source, _, _) <- accept sockSource
-  sockClient <- listen 9099
-  replicateM_ 100 $ do
-    (client, _, _) <- accept sockClient
-    hClose client
-  replicateM_ 10000000 $ hGetLine source >>= print . parseEvent
+  sourceSocket <- listen eventListenerPort
+  (source, _, _) <- accept sourceSocket
+  server <- Server <$> newTVarIO []
+  clientSocket <- listen clientListenerPort
+  replicateM_ clientCount $ do
+    (client, _, _) <- accept clientSocket
+    forkFinally (serve server client) (const $ hClose client)
+  replicateM_ eventCount $ hGetLine source >>= print . parseEvent
+  print =<< atomically (readTVar $ clients server)
   hClose source
+
+clientCount, eventCount :: Int
+clientCount = 10
+eventCount  = 10
+
+clientListenerPort, eventListenerPort :: Int
+clientListenerPort = 9099
+eventListenerPort  = 9090
 
 listen :: Int -> IO Socket
 listen = listenOn . PortNumber . fromIntegral
+
+serve :: Server -> Handle -> IO ()
+serve s h = do
+  c <- hGetLine h
+  atomically $ do
+    cs <- readTVar $ clients s
+    writeTVar (clients s) $ c:cs
+
+data Server = Server
+  { clients :: TVar [User]
+  }
 
 data Event = Event
   { eventRaw  :: String
