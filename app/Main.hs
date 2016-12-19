@@ -1,29 +1,32 @@
 module Main where
 
+import qualified Data.Map as Map
+
 import Control.Concurrent (forkFinally)
 import Control.Concurrent.STM.TVar (TVar, newTVarIO, readTVar, writeTVar)
+import Control.Concurrent.STM.TChan (TChan, dupTChan, newBroadcastTChanIO, readTChan, writeTChan)
 import Control.Monad (replicateM_)
-import Control.Monad.STM (atomically)
+import Control.Monad.STM (STM, atomically)
 import Data.List (unfoldr)
+import Data.Map (Map)
 import Network (PortID (PortNumber), accept, Socket, listenOn)
-import System.IO (Handle, hClose, hGetLine)
+import System.IO (Handle, hClose, hGetLine, hPutStrLn)
 
 main :: IO ()
 main = do
   sourceSocket <- listen eventListenerPort
-  (source, _, _) <- accept sourceSocket
-  server <- Server <$> newTVarIO []
+  (sourceHandle, _, _) <- accept sourceSocket
+  server <- Server <$> newTVarIO Map.empty <*> newBroadcastTChanIO
   clientSocket <- listen clientListenerPort
   replicateM_ clientCount $ do
-    (client, _, _) <- accept clientSocket
-    forkFinally (serve server client) (const $ hClose client)
-  replicateM_ eventCount $ hGetLine source >>= print . parseEvent
-  print =<< atomically (readTVar $ clients server)
-  hClose source
+    (handle, _, _) <- accept clientSocket
+    forkFinally (clientThread server handle) (const $ hClose handle)
+  replicateM_ eventCount $ hGetLine sourceHandle >>= notify server . parseEvent
+  hClose sourceHandle
 
 clientCount, eventCount :: Int
 clientCount = 10
-eventCount  = 10
+eventCount  = 50000
 
 clientListenerPort, eventListenerPort :: Int
 clientListenerPort = 9099
@@ -32,31 +35,56 @@ eventListenerPort  = 9090
 listen :: Int -> IO Socket
 listen = listenOn . PortNumber . fromIntegral
 
-serve :: Server -> Handle -> IO ()
-serve s h = do
-  c <- hGetLine h
+clientThread :: Server -> Handle -> IO ()
+clientThread s h = getClient s h >>= beNotified
+
+getClient :: Server -> Handle -> IO Client
+getClient s h = do
+  userId <- hGetLine h
   atomically $ do
-    cs <- readTVar $ clients s
-    writeTVar (clients s) $ c:cs
+    client <- newClient userId h s
+    cs <- readTVar (clients s)
+    writeTVar (clients s) $ Map.insert userId client cs
+    pure client
+
+beNotified :: Client -> IO ()
+beNotified c = do
+  msg <- atomically (readTChan $ clientBC c)
+  hPutStrLn (clientHandle c) msg
+  beNotified c
+
+notify :: Server -> Event -> IO ()
+notify s (Event r _ Broadcast) = atomically $ writeTChan (broadcast s) r
+notify _ _                     = pure ()
+
+type UserId = String
+type Notification = String
 
 data Server = Server
-  { clients :: TVar [User]
+  { clients   :: TVar (Map UserId Client)
+  , broadcast :: TChan Notification
   }
 
+data Client = Client
+  { clientId     :: UserId
+  , clientHandle :: Handle
+  , clientBC     :: TChan Notification
+  }
+
+newClient :: UserId -> Handle -> Server -> STM Client
+newClient u h s = Client u h <$> dupTChan (broadcast s)
+
 data Event = Event
-  { eventRaw  :: String
+  { eventRaw  :: Notification
   , eventSeq  :: Integer
   , eventComm :: Comm
-  } deriving Show
+  }
 
-data Comm = Message  User User
-          | Follow   User User
-          | Unfollow User User
-          | Update   User
+data Comm = Message  UserId UserId
+          | Follow   UserId UserId
+          | Unfollow UserId UserId
+          | Update   UserId
           | Broadcast
-          deriving Show
-
-type User = String
 
 parseEvent :: String -> Event
 parseEvent = match <*> splitOn '|'
