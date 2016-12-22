@@ -16,5 +16,5 @@ concurrencyLevel = 10
 numberOfUsers    = concurrencyLevel * 10
 
 totalEvents, maxEventSourceBatchSize :: Int
-totalEvents             = 50000
+totalEvents             = 500
 maxEventSourceBatchSize = 1
