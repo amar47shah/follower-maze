@@ -1,25 +1,27 @@
 module Client (Client, beNotified, sendMessage, newClient) where
 
-import Event (Notification, UserId)
+import Event (RawEvent, UserId)
 
 import Control.Concurrent.STM.TChan (TChan, newTChan, readTChan, writeTChan)
-import Control.Monad.STM (STM, atomically, orElse)
+import Control.Monad.STM (STM, atomically)
 import System.IO (Handle, hPutStrLn)
 
-data Client = Client
-  { clientId     :: UserId
-  , clientHandle :: Handle
-  , clientChan   :: TChan Notification
-  }
+data Client = Client UserId Handle (TChan RawEvent)
+
+handle :: Client -> Handle
+handle (Client _ h _) = h
+
+chan :: Client -> TChan RawEvent
+chan (Client _ _ c) = c
 
 newClient :: UserId -> Handle -> STM Client
 newClient u h = Client u h <$> newTChan
 
 beNotified :: Client -> IO ()
 beNotified c = do
-  msg <- atomically . readTChan $ clientChan c
-  hPutStrLn (clientHandle c) msg
+  msg <- atomically . readTChan $ chan c
+  hPutStrLn (handle c) msg
   beNotified c
 
-sendMessage :: Notification -> Client -> STM ()
-sendMessage n c = writeTChan (clientChan c) n
+sendMessage :: RawEvent -> Client -> STM ()
+sendMessage n c = writeTChan (chan c) n

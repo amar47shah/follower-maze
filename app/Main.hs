@@ -1,12 +1,12 @@
 module Main where
 
 import Config (eventListenerPort, clientListenerPort, concurrencyLevel, timeout)
-import Server (Server, initServer, processEvent, serveUser)
+import Server (Server, initServer, readAndProcess, serveUser)
 
 import Control.Concurrent (ThreadId, forkFinally, threadDelay)
 import Control.Monad (replicateM_, void)
 import Network (PortID (PortNumber), accept, Socket, listenOn, withSocketsDo)
-import System.IO (BufferMode (LineBuffering), Handle, hClose, hGetLine, hIsEOF, hSetBuffering, hSetEncoding, utf8)
+import System.IO (BufferMode (LineBuffering), Handle, hClose, hIsEOF, hSetBuffering, hSetEncoding, utf8)
 
 main :: IO ()
 main = withSocketsDo $ do
@@ -40,9 +40,6 @@ listen = listenOn . PortNumber . fromIntegral
 
 forkUserThread :: Server -> Handle -> IO ThreadId
 forkUserThread s = forkFinally <$> serveUser s <*> const . hClose
-
-readAndProcess :: Server -> Handle -> IO ()
-readAndProcess s h = hGetLine h >>= processEvent s
 
 untilM :: Monad m => (a -> m Bool) -> (a -> m a) -> a -> m a
 untilM p k x =

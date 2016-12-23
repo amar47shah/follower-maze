@@ -1,31 +1,42 @@
-module Event (Event (Event), Notification, UserId, Comm(..), parseEvent) where
+module Event (Event (..), EventQueue, RawEvent, UserId, emptyQueue, nextEvent) where
 
 import Data.List (unfoldr)
 
-type Notification = String
-type UserId       = Integer
+type RawEvent = String
+type UserId   = Integer
 
-data Event = Event
-  { eventRaw  :: Notification
-  , eventSeq  :: Integer
-  , eventComm :: Comm
-  }
+data SequencedEvent = SequencedEvent Integer Event
 
-data Comm = Message  UserId UserId
-          | Follow   UserId UserId
-          | Unfollow UserId UserId
-          | Update   UserId
-          | Broadcast
+data Event = Message   RawEvent UserId UserId
+           | Follow    RawEvent UserId UserId
+           | Unfollow  RawEvent UserId UserId
+           | Update    RawEvent UserId
+           | Broadcast RawEvent
 
-parseEvent :: String -> Event
-parseEvent = match <*> splitOn '|'
+data EventQueue = EventQueue [SequencedEvent]
+
+emptyQueue :: EventQueue
+emptyQueue = EventQueue []
+
+enqueue :: EventQueue -> SequencedEvent -> EventQueue
+enqueue (EventQueue ss) s = EventQueue (s:ss)
+
+dequeue :: EventQueue -> (Maybe Event, EventQueue)
+dequeue (EventQueue ((SequencedEvent _ e):ss)) = (Just e, EventQueue ss)
+dequeue _                                      = (Nothing, emptyQueue)
+
+nextEvent :: EventQueue -> RawEvent -> (Maybe Event, EventQueue)
+nextEvent q = dequeue . enqueue q . parseRawEvent
+
+parseRawEvent :: RawEvent -> SequencedEvent
+parseRawEvent = match <*> splitOn '|'
       where
-  match :: String -> [String] -> Event
-  match r [n, "P", from, to] = Event r (read n) $ Message  (read from) (read to)
-  match r [n, "F", from, to] = Event r (read n) $ Follow   (read from) (read to)
-  match r [n, "U", from, to] = Event r (read n) $ Unfollow (read from) (read to)
-  match r [n, "S", from    ] = Event r (read n) $ Update   (read from)
-  match r [n, "B"          ] = Event r (read n)   Broadcast
+  match :: RawEvent -> [RawEvent] -> SequencedEvent
+  match r [n, "P", from, to] = SequencedEvent (read n) $ Message   r (read from) (read to)
+  match r [n, "F", from, to] = SequencedEvent (read n) $ Follow    r (read from) (read to)
+  match r [n, "U", from, to] = SequencedEvent (read n) $ Unfollow  r (read from) (read to)
+  match r [n, "S", from    ] = SequencedEvent (read n) $ Update    r (read from)
+  match r [n, "B"          ] = SequencedEvent (read n) $ Broadcast r
   match _ _                  = error "Unrecognized event"
 
 splitOn :: Eq a => a -> [a] -> [[a]]
