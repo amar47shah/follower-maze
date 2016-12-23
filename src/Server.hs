@@ -16,14 +16,12 @@ import System.IO (Handle, hGetLine)
 data Server = Server
   { connections   :: TVar (Map UserId Client)
   , followers     :: TVar (Map UserId (Set UserId))
-  , broadcastChan :: TChan Notification
   }
 
 initServer :: IO Server
 initServer = Server
          <$> newTVarIO Map.empty
          <*> newTVarIO Map.empty
-         <*> newBroadcastTChanIO
 
 serveUser :: Server -> Handle -> IO ()
 serveUser s h = getClient s h >>= beNotified
@@ -32,7 +30,7 @@ getClient :: Server -> Handle -> IO Client
 getClient s h = do
   u <- hGetLine h
   atomically $ do
-    client <- newClient u h $ broadcastChan s
+    client <- newClient u h
     modifyTVar' (connections s) $ Map.insert u client
     pure client
 
@@ -42,23 +40,23 @@ processEvent s = atomically . react s . parseEvent
 react :: Server -> Event -> STM ()
 react serv (Event raw _ comm) =
   case comm of
-    Broadcast        ->                              broadcast serv raw
     Message  _    to ->                              notify    serv raw to
     Follow   from to -> follow       serv from to *> notify    serv raw to
     Unfollow from to -> unfollow     serv from to
     Update   from    -> getFollowers serv from   >>= notifyAll serv raw
+    Broadcast        -> allUsers     serv        >>= notifyAll serv raw
+
+getFollowers :: Server -> UserId -> STM (Set UserId)
+getFollowers s f = Map.findWithDefault Set.empty f <$> readTVar (followers s)
+
+allUsers :: Server -> STM (Set UserId)
+allUsers s = Map.keysSet <$> readTVar (connections s)
 
 follow :: Server -> UserId -> UserId -> STM ()
 follow s f = modifyTVar' (followers s) . Map.alter (addFollower f)
 
 unfollow :: Server -> UserId -> UserId -> STM ()
 unfollow s f = modifyTVar' (followers s) . Map.alter (removeFollower f)
-
-getFollowers :: Server -> UserId -> STM (Set UserId)
-getFollowers s f = Map.findWithDefault Set.empty f <$> readTVar (followers s)
-
-broadcast :: Server -> Notification -> STM ()
-broadcast s r = writeTChan (broadcastChan s) r
 
 notify :: Server -> Notification -> UserId -> STM ()
 notify s r t = readTVar (connections s)
