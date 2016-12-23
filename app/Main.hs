@@ -1,12 +1,12 @@
 module Main where
 
-import Config (eventListenerPort, clientListenerPort, totalEvents, concurrencyLevel)
+import Config (eventListenerPort, clientListenerPort, concurrencyLevel, timeout)
 import Server (Server, initServer, processEvent, serveUser)
 
-import Control.Concurrent (ThreadId, forkFinally)
-import Control.Monad (replicateM_)
+import Control.Concurrent (ThreadId, forkFinally, threadDelay)
+import Control.Monad (replicateM_, void)
 import Network (PortID (PortNumber), accept, Socket, listenOn, withSocketsDo)
-import System.IO (Handle, hClose, hGetLine)
+import System.IO (Handle, hClose, hGetLine, hIsEOF)
 
 main :: IO ()
 main = withSocketsDo $ do
@@ -25,13 +25,26 @@ main = withSocketsDo $ do
     forkUserThread server handle
   --
   -- Process events.
-  replicateM_ totalEvents $ hGetLine sourceHandle >>= processEvent server
+  void $ untilM hIsEOF (fmap <$> const <*> readAndProcess server) sourceHandle
   --
   -- Close source.
   hClose sourceHandle
+  --
+  -- Wait to deliver the rest of the notifications.
+  threadDelay $ timeout * 100 -- Tweak this value.
 
 listen :: Int -> IO Socket
 listen = listenOn . PortNumber . fromIntegral
 
 forkUserThread :: Server -> Handle -> IO ThreadId
 forkUserThread s = forkFinally <$> serveUser s <*> const . hClose
+
+readAndProcess :: Server -> Handle -> IO ()
+readAndProcess s h = hGetLine h >>= processEvent s
+
+untilM :: Monad m => (a -> m Bool) -> (a -> m a) -> a -> m a
+untilM p k x =
+  p x >>= \b ->
+    if b
+    then pure x
+    else k x >>= untilM p k

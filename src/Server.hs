@@ -6,7 +6,7 @@ import Client (Client, newClient, beNotified, sendMessage)
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Control.Concurrent.STM.TChan (TChan, newBroadcastTChanIO, writeTChan)
-import Control.Concurrent.STM.TVar (TVar, newTVarIO, modifyTVar, readTVar)
+import Control.Concurrent.STM.TVar (TVar, newTVarIO, modifyTVar', readTVar)
 import Control.Monad (forM_)
 import Control.Monad.STM (STM, atomically)
 import Data.Map (Map)
@@ -33,7 +33,7 @@ getClient s h = do
   u <- hGetLine h
   atomically $ do
     client <- newClient u h $ broadcastChan s
-    modifyTVar (connections s) $ Map.insert u client
+    modifyTVar' (connections s) $ Map.insert u client
     pure client
 
 processEvent :: Server -> String -> IO ()
@@ -49,10 +49,10 @@ react serv (Event raw _ comm) =
     Update   from    -> getFollowers serv from   >>= notifyAll serv raw
 
 follow :: Server -> UserId -> UserId -> STM ()
-follow s f = modifyTVar (followers s) . Map.alter (addFollower f)
+follow s f = modifyTVar' (followers s) . Map.alter (addFollower f)
 
 unfollow :: Server -> UserId -> UserId -> STM ()
-unfollow s f = modifyTVar (followers s) . Map.alter (removeFollower f)
+unfollow s f = modifyTVar' (followers s) . Map.alter (removeFollower f)
 
 getFollowers :: Server -> UserId -> STM (Set UserId)
 getFollowers s f = Map.findWithDefault Set.empty f <$> readTVar (followers s)
