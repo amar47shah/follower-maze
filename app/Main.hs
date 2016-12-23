@@ -6,7 +6,7 @@ import Server (Server, initServer, processEvent, serveUser)
 import Control.Concurrent (ThreadId, forkFinally, threadDelay)
 import Control.Monad (replicateM_, void)
 import Network (PortID (PortNumber), accept, Socket, listenOn, withSocketsDo)
-import System.IO (Handle, hClose, hGetLine, hIsEOF)
+import System.IO (BufferMode (LineBuffering), Handle, hClose, hGetLine, hIsEOF, hSetBuffering, hSetEncoding, utf8)
 
 main :: IO ()
 main = withSocketsDo $ do
@@ -14,6 +14,8 @@ main = withSocketsDo $ do
   -- Connect to source.
   sourceSocket <- listen eventListenerPort
   (sourceHandle, _, _) <- accept sourceSocket
+  hSetBuffering sourceHandle LineBuffering
+  hSetEncoding sourceHandle utf8
   --
   -- Initialize server.
   server <- initServer
