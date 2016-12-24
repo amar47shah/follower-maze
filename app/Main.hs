@@ -1,9 +1,9 @@
 module Main where
 
-import Config (eventListenerPort, clientListenerPort, concurrencyLevel, timeout)
+import Config (eventListenerPort, clientListenerPort, concurrencyLevel)
 import Server (Server, initServer, serveEventSource, serveUserClient)
 
-import Control.Concurrent (ThreadId, forkFinally, threadDelay)
+import Control.Concurrent (ThreadId, forkFinally)
 import Control.Monad (replicateM_)
 import Network (PortID (PortNumber), accept, Socket, listenOn, withSocketsDo)
 import System.IO (BufferMode (LineBuffering), Handle, hClose, hSetBuffering, hSetEncoding, utf8)
@@ -31,9 +31,6 @@ main = withSocketsDo $ do
   --
   -- Close source.
   hClose sourceHandle
-  --
-  -- Wait to deliver the rest of the notifications.
-  threadDelay $ timeout * 100
 
 listen :: Int -> IO Socket
 listen = listenOn . PortNumber . fromIntegral
