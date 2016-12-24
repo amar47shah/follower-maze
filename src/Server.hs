@@ -1,6 +1,6 @@
 module Server (Server, initServer, readAndProcess, serveUser) where
 
-import Event (Event (..), EventQueue, RawEvent, UserId, emptyQueue, nextEvent)
+import Event (Event (..), EventQueue, RawEvent, UserId, emptyQueue, nextPlease)
 import Client (Client, newClient, beNotified, sendMessage)
 
 import qualified Data.Map as Map
@@ -32,10 +32,13 @@ getClient s h = do
     modifyTVar' (connections s) $ Map.insert u client
     pure client
 
-readAndProcess :: Server -> Handle -> IO ()
-readAndProcess s h = do
-  (maybeEvent, newQueue) <- nextEvent (queue s) <$> hGetLine h
-  maybe (pure ()) (atomically . react (s { queue = newQueue })) maybeEvent
+readAndProcess :: Server -> Handle -> IO Server
+readAndProcess server handle = do
+  line <- hGetLine handle
+  let (events, newQueue) = nextPlease (queue server) line
+  let newServer = server { queue = newQueue }
+  forM_ events $ atomically . react newServer
+  pure newServer
 
 react :: Server -> Event -> STM ()
 react s (Message   raw _    to) =                           notify    s raw to

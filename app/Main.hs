@@ -4,7 +4,7 @@ import Config (eventListenerPort, clientListenerPort, concurrencyLevel, timeout)
 import Server (Server, initServer, readAndProcess, serveUser)
 
 import Control.Concurrent (ThreadId, forkFinally, threadDelay)
-import Control.Monad (replicateM_, void)
+import Control.Monad (replicateM_)
 import Network (PortID (PortNumber), accept, Socket, listenOn, withSocketsDo)
 import System.IO (BufferMode (LineBuffering), Handle, hClose, hIsEOF, hSetBuffering, hSetEncoding, utf8)
 
@@ -27,7 +27,7 @@ main = withSocketsDo $ do
     forkUserThread server handle
   --
   -- Process events.
-  void $ untilM hIsEOF (fmap <$> const <*> readAndProcess server) sourceHandle
+  loop server sourceHandle
   --
   -- Close source.
   hClose sourceHandle
@@ -41,9 +41,10 @@ listen = listenOn . PortNumber . fromIntegral
 forkUserThread :: Server -> Handle -> IO ThreadId
 forkUserThread s = forkFinally <$> serveUser s <*> const . hClose
 
-untilM :: Monad m => (a -> m Bool) -> (a -> m a) -> a -> m a
-untilM p k x =
-  p x >>= \b ->
-    if b
-    then pure x
-    else k x >>= untilM p k
+loop :: Server -> Handle -> IO ()
+loop s h = do
+  newS <- readAndProcess s h
+  isEOF <- hIsEOF h
+  if isEOF
+  then pure ()
+  else loop newS h
