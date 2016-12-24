@@ -1,4 +1,4 @@
-module Client (Client, beNotified, sendMessage, newClient) where
+module Client (Client, beNotified, newClient, sendMessage) where
 
 import Event (RawEvent, UserId)
 

@@ -1,6 +1,6 @@
-module Server (Server, initServer, readAndProcess, serveUser) where
+module Server (Server, initServer, serveEventSource, serveUserClient) where
 
-import Event (Event (..), EventQueue, RawEvent, UserId, emptyQueue, nextPlease)
+import Event (Event (..), EventQueue, RawEvent, UserId, dequeueAll, emptyQueue, enqueueRaw)
 import Client (Client, newClient, beNotified, sendMessage)
 
 import qualified Data.Map as Map
@@ -10,7 +10,7 @@ import Control.Monad (forM_)
 import Control.Monad.STM (STM, atomically)
 import Data.Map (Map)
 import Data.Set (Set)
-import System.IO (Handle, hGetLine)
+import System.IO (Handle, hGetLine, hIsEOF)
 
 data Server = Server
   { queue       :: EventQueue
@@ -21,21 +21,29 @@ data Server = Server
 initServer :: IO Server
 initServer = Server emptyQueue <$> newTVarIO Map.empty <*> newTVarIO Map.empty
 
-serveUser :: Server -> Handle -> IO ()
-serveUser s h = getClient s h >>= beNotified
+serveUserClient :: Server -> Handle -> IO ()
+serveUserClient s h = getClient s h >>= beNotified
 
 getClient :: Server -> Handle -> IO Client
-getClient s h = do
-  u <- read <$> hGetLine h
+getClient server handle = do
+  userId <- read <$> hGetLine handle
   atomically $ do
-    client <- newClient u h
-    modifyTVar' (connections s) $ Map.insert u client
+    client <- newClient userId handle
+    modifyTVar' (connections server) $ Map.insert userId client
     pure client
 
-readAndProcess :: Server -> Handle -> IO Server
-readAndProcess server handle = do
-  line <- hGetLine handle
-  let (events, newQueue) = nextPlease (queue server) line
+serveEventSource :: Server -> Handle -> IO ()
+serveEventSource server handle = do
+  newServer <- readLineAndProcess server handle
+  isEOF <- hIsEOF handle
+  if isEOF
+  then pure ()
+  else serveEventSource newServer handle
+
+readLineAndProcess :: Server -> Handle -> IO Server
+readLineAndProcess server handle = do
+  raw <- hGetLine handle
+  let (events, newQueue) = dequeueAll $ enqueueRaw (queue server) raw
   let newServer = server { queue = newQueue }
   forM_ events $ atomically . react newServer
   pure newServer

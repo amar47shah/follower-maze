@@ -1,4 +1,4 @@
-module Event (Event (..), EventQueue, RawEvent, UserId, emptyQueue, nextPlease) where
+module Event (Event (..), EventQueue, RawEvent, UserId, dequeueAll, emptyQueue, enqueueRaw) where
 
 import Data.List (unfoldr)
 import Data.Function (on)
@@ -46,30 +46,30 @@ data EventQueue = EventQueue Integer (Heap SequencedEvent)
 emptyQueue :: EventQueue
 emptyQueue = EventQueue 1 Empty
 
+enqueueRaw :: EventQueue -> RawEvent -> EventQueue
+enqueueRaw q = enqueue q . parseRawEvent
+
+dequeueAll :: EventQueue -> ([Event], EventQueue)
+dequeueAll queue = (reverse backwards, flushed)
+      where
+  (backwards, flushed) = collectDequeued ([], queue)
+  collectDequeued (es, q) =
+    maybe (es, q) (\(e, r) -> collectDequeued (e:es, r)) $ dequeue q
+
 enqueue :: EventQueue -> SequencedEvent -> EventQueue
 enqueue (EventQueue n h) se = EventQueue n $ insert se h
 
-dequeueAll :: EventQueue -> ([Event], EventQueue)
-dequeueAll q = go [] q
-    where
-  go es r =
-    case dequeue r of
-      (Nothing, _) -> (es, r)
-      (Just e, r') -> go (es ++ [e]) r'
+dequeue :: EventQueue -> Maybe (Event, EventQueue)
+dequeue (EventQueue n h) =
+  findMin h >>= takeIfReady
+      where
+  takeIfReady (SequencedEvent s e) =
+    if s > n
+    then Nothing
+    else Just (e, EventQueue (succ n) (deleteMin h))
 
-dequeue :: EventQueue -> (Maybe Event, EventQueue)
-dequeue q@(EventQueue n h) =
-  case findMin h of
-    Nothing -> (Nothing, q)
-    Just (SequencedEvent s e) ->
-      if s > n then (Nothing, q) else (Just e, EventQueue (succ n) (deleteMin h))
-
-nextPlease :: EventQueue -> RawEvent -> ([Event], EventQueue)
-nextPlease q = dequeueAll . enqueue q . parseRawEvent
-
--- Implementation of Pairing Heap: https://en.wikipedia.org/wiki/Pairing_heap
--- Code adapted from http://stackoverflow.com/questions/27136691/is-there-a-simple-way-to-implement-a-fast-priority-queue-in-haskell
-data Heap a = Empty | Heap a [(Heap a)]
+-- Pairing Heap: https://en.wikipedia.org/wiki/Pairing_heap
+data Heap a = Empty | Heap a [Heap a]
 
 insert :: Ord a => a -> Heap a -> Heap a
 insert x = merge (Heap x [])
