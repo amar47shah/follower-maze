@@ -1,4 +1,4 @@
-module Server (Server, initServer, serveEventSource, serveUserClient) where
+module Server (initServer, serveEventSource, serveUserClient) where
 
 import Event (Event (..), EventQueue, RawEvent, UserId, dequeueAll, emptyQueue, enqueueRaw)
 import Client (Client, newClient, beNotified, sendMessage)

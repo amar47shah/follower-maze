@@ -1,10 +1,10 @@
 module Main where
 
-import Config (eventListenerPort, clientListenerPort, concurrencyLevel)
-import Server (Server, initServer, serveEventSource, serveUserClient)
+import Config (eventListenerPort, clientListenerPort)
+import Server (initServer, serveEventSource, serveUserClient)
 
 import Control.Concurrent (ThreadId, forkFinally)
-import Control.Monad (replicateM_)
+import Control.Monad (forever, void)
 import Network (PortID (PortNumber), accept, Socket, listenOn, withSocketsDo)
 import System.IO (BufferMode (LineBuffering), Handle, hClose, hSetBuffering, hSetEncoding, utf8)
 
@@ -14,26 +14,25 @@ main = withSocketsDo $ do
   -- Connect to source.
   sourceSocket <- listen eventListenerPort
   (sourceHandle, _, _) <- accept sourceSocket
-  hSetBuffering sourceHandle LineBuffering
-  hSetEncoding sourceHandle utf8
   --
-  -- Initialize server.
+  -- Process events.
+  configureSourceHandle sourceHandle
   server <- initServer
+  void $ serveEventSource server `forkFinallyClosing` sourceHandle
   --
   -- Connect to clients and fork threads.
   clientSocket <- listen clientListenerPort
-  replicateM_ concurrencyLevel $ do
-    (handle, _, _) <- accept clientSocket
-    forkUserThread server handle
-  --
-  -- Process events.
-  serveEventSource server sourceHandle
-  --
-  -- Close source.
-  hClose sourceHandle
+  forever $ do
+    (clientHandle, _, _) <- accept clientSocket
+    serveUserClient server `forkFinallyClosing` clientHandle
 
 listen :: Int -> IO Socket
 listen = listenOn . PortNumber . fromIntegral
 
-forkUserThread :: Server -> Handle -> IO ThreadId
-forkUserThread s = forkFinally <$> serveUserClient s <*> const . hClose
+configureSourceHandle :: Handle -> IO ()
+configureSourceHandle h =
+     hSetBuffering h LineBuffering
+  *> hSetEncoding  h utf8
+
+forkFinallyClosing :: (Handle -> IO a) -> Handle -> IO ThreadId
+forkFinallyClosing process = forkFinally <$> process <*> const . hClose
