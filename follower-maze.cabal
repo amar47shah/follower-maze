@@ -37,9 +37,12 @@ executable follower-maze-exe
 test-suite follower-maze-test
   type:                exitcode-stdio-1.0
   hs-source-dirs:      test
-  main-is:             Spec.hs
+  main-is:             Test.hs
+  other-modules:       EventTest
   build-depends:       base
                      , follower-maze
+                     , tasty
+                     , tasty-quickcheck
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N -Wall -Werror
   default-language:    Haskell2010
 
