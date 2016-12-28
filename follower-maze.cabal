@@ -18,6 +18,7 @@ library
   exposed-modules:     Client
                      , Config
                      , Event
+                     , EventQueue
                      , Server
   build-depends:       base >= 4.7 && < 5
                      , containers

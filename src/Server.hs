@@ -1,6 +1,12 @@
-module Server (initServer, serveEventSource, serveUserClient) where
+-- | Module
+module Server (
+    initServer
+  , serveEventSource
+  , serveUserClient
+  ) where
 
-import Event (Event (..), EventQueue, RawEvent, UserId, dequeueAll, emptyQueue, enqueueRaw)
+import Event (Event (Broadcast, Follow, Message, Unfollow, Update), RawEvent, UserId)
+import EventQueue (EventQueue, dequeueAll, emptyQueue, enqueueRaw)
 import Client (Client, newClient, beNotified, sendMessage)
 
 import qualified Data.Map as Map
