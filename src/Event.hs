@@ -18,8 +18,9 @@ data Event = Message   RawEvent UserId UserId  -- ^ Stub
            | Broadcast RawEvent                -- ^ Stub
 
 -- | Exported
-type RawEvent = String   -- ^ Stub
-type UserId   = Integer  -- ^ Stub
+type RawEvent = String
+-- | Exported
+type UserId   = Integer
 
 -- | Exported
 data SequencedEvent = SequencedEvent Integer Event

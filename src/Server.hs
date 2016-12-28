@@ -18,15 +18,18 @@ import Data.Map (Map)
 import Data.Set (Set)
 import System.IO (Handle, hGetLine, hIsEOF)
 
+-- | Internal
 data Server = Server
   { queue       :: EventQueue
   , connections :: TVar (Map UserId Client)
   , followers   :: TVar (Map UserId (Set UserId))
   }
 
+-- | Exported
 initServer :: IO Server
 initServer = Server emptyQueue <$> newTVarIO Map.empty <*> newTVarIO Map.empty
 
+-- | Exported
 serveUserClient :: Server -> Handle -> IO ()
 serveUserClient s h = getClient s h >>= beNotified
 
@@ -38,6 +41,7 @@ getClient server handle = do
     modifyTVar' (connections server) $ Map.insert userId client
     pure client
 
+-- | Exported
 serveEventSource :: Server -> Handle -> IO ()
 serveEventSource server handle = do
   newServer <- readLineAndProcess server handle
