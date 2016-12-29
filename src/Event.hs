@@ -1,9 +1,10 @@
 -- | Module
-module Event (
-    Event (Broadcast, Follow, Message, Unfollow, Update)
+module Event
+  ( Event (Broadcast, Follow, Message, Unfollow, Update)
   , RawEvent
   , SequencedEvent (SequencedEvent)
   , UserId
+  , eventRaw
   , parseRawEvent
   ) where
 
@@ -16,6 +17,7 @@ data Event = Message   RawEvent UserId UserId  -- ^ Stub
            | Unfollow  RawEvent UserId UserId  -- ^ Stub
            | Update    RawEvent UserId         -- ^ Stub
            | Broadcast RawEvent                -- ^ Stub
+           deriving Show
 
 -- | Exported
 type RawEvent = String
@@ -23,7 +25,15 @@ type RawEvent = String
 type UserId   = Integer
 
 -- | Exported
-data SequencedEvent = SequencedEvent Integer Event
+eventRaw :: Event -> RawEvent
+eventRaw (Follow    r _ _) = r
+eventRaw (Unfollow  r _ _) = r
+eventRaw (Broadcast r    ) = r
+eventRaw (Message   r _ _) = r
+eventRaw (Update    r _  ) = r
+
+-- | Exported
+data SequencedEvent = SequencedEvent Integer Event deriving Show
 
 sequenceNumber :: SequencedEvent -> Integer
 sequenceNumber (SequencedEvent s _) = s

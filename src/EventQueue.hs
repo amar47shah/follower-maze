@@ -1,6 +1,6 @@
 -- | Module
-module EventQueue (
-    EventQueue
+module EventQueue
+  ( EventQueue (EventQueue)
   , dequeueAll
   , emptyQueue
   , enqueueRaw
@@ -9,7 +9,7 @@ module EventQueue (
 import Event (Event, RawEvent, SequencedEvent (SequencedEvent), parseRawEvent)
 
 -- | Exported
-data EventQueue = EventQueue Integer (Heap SequencedEvent)
+data EventQueue = EventQueue Integer (Heap SequencedEvent) deriving Show
 
 -- | Exported
 emptyQueue :: EventQueue
@@ -41,7 +41,7 @@ dequeue (EventQueue n h) =
 
 -- | Internal
 -- Pairing Heap: https://en.wikipedia.org/wiki/Pairing_heap
-data Heap a = Empty | Heap a [Heap a]
+data Heap a = Empty | Heap a [Heap a] deriving Show
 
 insert :: Ord a => a -> Heap a -> Heap a
 insert x = merge (Heap x [])

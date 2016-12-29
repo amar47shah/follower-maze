@@ -1,6 +1,6 @@
 -- | Module
-module Client (
-    Client
+module Client
+  ( Client
   , beNotified
   , newClient
   , sendMessage

@@ -1,6 +1,6 @@
 -- | Module
-module Config (
-    eventListenerPort
+module Config
+  ( eventListenerPort
   , clientListenerPort
   , numberOfUsers
   , totalEvents

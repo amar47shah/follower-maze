@@ -39,6 +39,8 @@ test-suite follower-maze-test
   hs-source-dirs:      test
   main-is:             Test.hs
   other-modules:       EventTest
+                     , EventQueueTest
+                     , Generators
   build-depends:       base
                      , follower-maze
                      , tasty

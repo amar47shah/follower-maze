@@ -1,6 +1,6 @@
 -- | Module
-module Server (
-    initServer
+module Server
+  ( initServer
   , serveEventSource
   , serveUserClient
   ) where

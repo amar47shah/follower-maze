@@ -1,18 +1,12 @@
-module EventTest (eventTests) where
+module EventTest
+  ( eventTests
+  ) where
 
-import Config (numberOfUsers, totalEvents)
-import Event (
-    Event (Broadcast, Follow, Message, Unfollow, Update)
-  , RawEvent
-  , SequencedEvent (SequencedEvent)
-  , parseRawEvent
-  )
+import Event (Event (..), SequencedEvent (..), eventRaw, parseRawEvent)
+import Generators (broadcast, follow, message, rawEvent, unfollow, update)
 
 import Test.Tasty
 import qualified Test.Tasty.QuickCheck as QC
-import Control.Applicative (liftA2)
-import Control.Monad (replicateM)
-import Data.List (intercalate)
 
 eventTests :: TestTree
 eventTests = testGroup "Event" [parseRawEventTests]
@@ -92,26 +86,4 @@ propParsePreserves :: QC.Property
 propParsePreserves =
   QC.forAll rawEvent $ containsRaw <*> parseRawEvent
       where
-  containsRaw raw (SequencedEvent _ e) = containsRaw' raw e
-  containsRaw' r (Follow    r' _ _) = r == r'
-  containsRaw' r (Unfollow  r' _ _) = r == r'
-  containsRaw' r (Broadcast r'    ) = r == r'
-  containsRaw' r (Message   r' _ _) = r == r'
-  containsRaw' r (Update    r' _  ) = r == r'
-
-rawEvent :: QC.Gen RawEvent
-rawEvent = QC.oneof [follow, unfollow, broadcast, message, update]
-
-follow, unfollow, broadcast, message, update :: QC.Gen RawEvent
-follow    = rawEventGen "F" 2
-unfollow  = rawEventGen "U" 2
-broadcast = rawEventGen "B" 0
-message   = rawEventGen "P" 2
-update    = rawEventGen "S" 1
-
-rawEventGen :: RawEvent -> Int -> QC.Gen RawEvent
-rawEventGen c u =
-  fmap (intercalate "|") . liftA2 (:) sequenceNum . fmap (c:) $ replicateM u user
-      where
-  sequenceNum = show <$> QC.choose (1, totalEvents)
-  user        = show <$> QC.choose (1, numberOfUsers)
+  containsRaw raw (SequencedEvent _ e) = raw == eventRaw e
