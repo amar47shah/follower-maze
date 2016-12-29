@@ -10,6 +10,7 @@ module Event
 
 import Data.List (unfoldr)
 import Data.Function (on)
+import Safe (readMay)
 
 -- | Exported
 data Event = Message   RawEvent UserId UserId  -- ^ Stub
@@ -45,16 +46,18 @@ instance Ord SequencedEvent where
   compare = compare `on` sequenceNumber
 
 -- | Exported
-parseRawEvent :: RawEvent -> SequencedEvent
+parseRawEvent :: RawEvent -> Maybe SequencedEvent
 parseRawEvent = match <*> splitOn '|'
       where
-  match :: RawEvent -> [RawEvent] -> SequencedEvent
-  match r [n, "P", from, to] = SequencedEvent (read n) $ Message   r (read from) (read to)
-  match r [n, "F", from, to] = SequencedEvent (read n) $ Follow    r (read from) (read to)
-  match r [n, "U", from, to] = SequencedEvent (read n) $ Unfollow  r (read from) (read to)
-  match r [n, "S", from    ] = SequencedEvent (read n) $ Update    r (read from)
-  match r [n, "B"          ] = SequencedEvent (read n) $ Broadcast r
-  match _ _                  = error "Unrecognized event"
+  match :: RawEvent -> [RawEvent] -> Maybe SequencedEvent
+  match r [n, "P", f, t] = maybeSE n $ Message   r <$> readMay f <*> readMay t
+  match r [n, "F", f, t] = maybeSE n $ Follow    r <$> readMay f <*> readMay t
+  match r [n, "U", f, t] = maybeSE n $ Unfollow  r <$> readMay f <*> readMay t
+  match r [n, "S", f   ] = maybeSE n $ Update    r <$> readMay f
+  match r [n, "B"      ] = maybeSE n . Just $ Broadcast r
+  match _ _              = Nothing
+  maybeSE :: RawEvent -> Maybe Event -> Maybe SequencedEvent
+  maybeSE numField me = SequencedEvent <$> readMay numField <*> me
 
 splitOn :: Eq a => a -> [a] -> [[a]]
 splitOn = unfoldr . splitOnceOn

@@ -17,7 +17,7 @@ emptyQueue = EventQueue 1 Empty
 
 -- | Exported
 enqueueRaw :: EventQueue -> RawEvent -> EventQueue
-enqueueRaw q = enqueue q . parseRawEvent
+enqueueRaw q = maybe q (enqueue q) . parseRawEvent
 
 enqueue :: EventQueue -> SequencedEvent -> EventQueue
 enqueue (EventQueue n h) se = EventQueue n $ insert se h
