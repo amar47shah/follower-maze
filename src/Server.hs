@@ -18,6 +18,7 @@ import Control.Monad.STM (STM, atomically)
 import Data.Map (Map)
 import Data.Set (Set)
 import System.IO (Handle, hGetLine, hIsEOF)
+import Safe (readMay)
 
 -- | Internal
 data Server = Server
@@ -33,19 +34,29 @@ initServer = Server emptyQueue <$> newTVarIO Map.empty <*> newTVarIO Map.empty
 -- | Exported
 serveUserClient :: Server -> Handle -> IO ()
 serveUserClient server handle =
-  bracket (acquireClient server handle) (releaseClient server) beNotified
+  bracket (acquireClient server handle) (releaseClient server) serveUserClient'
+      where
+  serveUserClient' :: Maybe Client -> IO ()
+  serveUserClient' = maybe (pure ()) beNotified
 
-acquireClient :: Server -> Handle -> IO Client
+acquireClient :: Server -> Handle -> IO (Maybe Client)
 acquireClient server handle = do
-  userId <- read <$> hGetLine handle
-  atomically $ do
-    client <- newClient userId handle
-    modifyTVar' (connections server) $ Map.insert userId client
-    pure client
+  maybeUserId <- readMay <$> hGetLine handle
+  maybe (pure Nothing) (registerClient server handle) maybeUserId
 
-releaseClient :: Server -> Client -> IO ()
-releaseClient server client =
-  atomically . modifyTVar' (connections server) . Map.delete $ clientUserId client
+registerClient :: Server -> Handle -> UserId -> IO (Maybe Client)
+registerClient server handle userId = atomically $ do
+  client <- newClient userId handle
+  modifyTVar' (connections server) $ Map.insert userId client
+  pure $ Just client
+
+releaseClient :: Server -> Maybe Client -> IO ()
+releaseClient server maybeClient =
+  maybe (pure ()) (releaseClient' server) maybeClient
+      where
+  releaseClient' :: Server -> Client -> IO ()
+  releaseClient' s c =
+    atomically . modifyTVar' (connections s) . Map.delete $ clientUserId c
 
 -- | Exported
 serveEventSource :: Server -> Handle -> IO ()

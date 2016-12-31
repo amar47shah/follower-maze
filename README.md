@@ -1,7 +1,6 @@
 Unhandled issues:
 
 * What if a client connects with a user id already in use?
-* What if a client connects with a user id that is malformed?
 
 Future work:
 
