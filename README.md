@@ -2,13 +2,11 @@ Unhandled issues:
 
 * What if a client connects with a user id already in use?
 * What if a client connects with a user id that is malformed?
-* What if a client disconnects before the events are all consumed?
 
 Future work:
 
 * Error handling
   * handle common scenarios, like those above
-  * release resources, such as connection handles
 
 * Restricting duplicates
   * filter exact duplicates in the result of dequeueAll

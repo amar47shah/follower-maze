@@ -7,11 +7,12 @@ module Server
 
 import Event (Event (Broadcast, Follow, Message, Unfollow, Update), RawEvent, UserId)
 import EventQueue (EventQueue, dequeueAll, emptyQueue, enqueueRaw)
-import Client (Client, newClient, beNotified, sendMessage)
+import Client (Client, clientUserId, newClient, beNotified, sendMessage)
 
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Control.Concurrent.STM.TVar (TVar, newTVarIO, modifyTVar', readTVar)
+import Control.Exception (bracket)
 import Control.Monad (forM_)
 import Control.Monad.STM (STM, atomically)
 import Data.Map (Map)
@@ -31,15 +32,20 @@ initServer = Server emptyQueue <$> newTVarIO Map.empty <*> newTVarIO Map.empty
 
 -- | Exported
 serveUserClient :: Server -> Handle -> IO ()
-serveUserClient s h = getClient s h >>= beNotified
+serveUserClient server handle =
+  bracket (acquireClient server handle) (releaseClient server) beNotified
 
-getClient :: Server -> Handle -> IO Client
-getClient server handle = do
+acquireClient :: Server -> Handle -> IO Client
+acquireClient server handle = do
   userId <- read <$> hGetLine handle
   atomically $ do
     client <- newClient userId handle
     modifyTVar' (connections server) $ Map.insert userId client
     pure client
+
+releaseClient :: Server -> Client -> IO ()
+releaseClient server client =
+  atomically . modifyTVar' (connections server) . Map.delete $ clientUserId client
 
 -- | Exported
 serveEventSource :: Server -> Handle -> IO ()
