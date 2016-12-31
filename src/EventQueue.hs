@@ -4,6 +4,7 @@ module EventQueue
   , dequeueAll
   , emptyQueue
   , enqueueRaw
+  , newQueueAt
   ) where
 
 import Event (Event, RawEvent, SequencedEvent (SequencedEvent), parseRawEvent)
@@ -13,7 +14,11 @@ data EventQueue = EventQueue Integer (Heap SequencedEvent) deriving Show
 
 -- | Exported
 emptyQueue :: EventQueue
-emptyQueue = EventQueue 1 Empty
+emptyQueue = newQueueAt 1
+
+-- | Exported
+newQueueAt :: Integer -> EventQueue
+newQueueAt s = EventQueue s Empty
 
 -- | Exported
 enqueueRaw :: EventQueue -> RawEvent -> EventQueue
@@ -27,17 +32,23 @@ dequeueAll :: EventQueue -> ([Event], EventQueue)
 dequeueAll queue = (reverse backwards, flushed)
       where
   (backwards, flushed) = collectDequeued ([], queue)
+  collectDequeued :: ([Event], EventQueue) -> ([Event], EventQueue)
   collectDequeued (es, q) =
     maybe (es, q) (\(e, r) -> collectDequeued (e:es, r)) $ dequeue q
 
 dequeue :: EventQueue -> Maybe (Event, EventQueue)
-dequeue (EventQueue n h) =
-  findMin h >>= takeIfReady
+dequeue queue =
+  next queue >>= takeIfReady queue
       where
-  takeIfReady (SequencedEvent s e) =
-    if s > n
-    then Nothing
-    else Just (e, EventQueue (succ n) (deleteMin h))
+  takeIfReady :: EventQueue -> SequencedEvent -> Maybe (Event, EventQueue)
+  takeIfReady (EventQueue n h) (SequencedEvent s e) =
+    case compare n s of
+      GT -> Just (e, EventQueue       n  $ deleteMin h)
+      EQ -> Just (e, EventQueue (succ n) $ deleteMin h)
+      _  -> Nothing
+
+next :: EventQueue -> Maybe SequencedEvent
+next (EventQueue _ h) = findMin h
 
 -- | Internal
 -- Pairing Heap: https://en.wikipedia.org/wiki/Pairing_heap

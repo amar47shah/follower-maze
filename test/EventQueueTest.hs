@@ -17,28 +17,28 @@ dequeueAllTests = testGroup "dequeueAll" [dequeueAllProps]
 
 dequeueAllProps :: TestTree
 dequeueAllProps = testGroup "Properties"
-  [ QC.testProperty "dequeues events in successive sequence" propDequeueAllSucc
-  , QC.testProperty "queue expects next sequence number"     propDequeueAllNextSucc
-  , QC.testProperty "next number same after empty dequeue"   propDequeueAllNextSame
-  , QC.testProperty "second dequeue in a row is empty"       propDequeueAllTwiceEmpty
+  [ QC.testProperty "dequeues events in ascending sequence" propDequeueAllNonDec
+  , QC.testProperty "next number larger than dequeued"      propDequeueAllNextLarger
+  , QC.testProperty "next number same after empty dequeue"  propDequeueAllNextSame
+  , QC.testProperty "second dequeue in a row is empty"      propDequeueAllTwiceEmpty
   ]
 
-propDequeueAllSucc :: QC.Property
-propDequeueAllSucc =
-  QC.forAll eventQueue $ isSuccSequence . fst . dequeueAll
+propDequeueAllNonDec :: QC.Property
+propDequeueAllNonDec =
+  QC.forAll eventQueue $ isNonDecSequence . fst . dequeueAll
       where
-  isSuccSequence :: [Event] -> Bool
-  isSuccSequence = isSucc . map sequenceNum
-  isSucc :: (Enum a, Eq a) => [a] -> Bool
-  isSucc = and . (zipWith ((==) . succ) <*> tail)
+  isNonDecSequence :: [Event] -> Bool
+  isNonDecSequence = isNonDec . map sequenceNum
+  isNonDec :: Ord a => [a] -> Bool
+  isNonDec = and . (zipWith (<=) <*> tail)
 
-propDequeueAllNextSucc :: QC.Property
-propDequeueAllNextSucc =
-  QC.forAll eventQueue $ queueExpectsNext . dequeueAll
+propDequeueAllNextLarger :: QC.Property
+propDequeueAllNextLarger =
+  QC.forAll eventQueue $ nextExpectedLarger . dequeueAll
       where
-  queueExpectsNext :: ([Event], EventQueue) -> Bool
-  queueExpectsNext ([], _             ) = True
-  queueExpectsNext (es, EventQueue n _) = sequenceNum (last es) == pred n
+  nextExpectedLarger :: ([Event], EventQueue) -> Bool
+  nextExpectedLarger ([], _             ) = True
+  nextExpectedLarger (es, EventQueue n _) = sequenceNum (last es) < n
 
 propDequeueAllNextSame :: QC.Property
 propDequeueAllNextSame =
