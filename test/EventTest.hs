@@ -2,14 +2,21 @@ module EventTest
   ( eventTests
   ) where
 
-import Event (Event (..), RawEvent, SequencedEvent (..), eventRaw, parseRawEvent)
-import Generators (broadcast, follow, message, rawEvent, unfollow, update)
+import Event
+  ( Event (Message, Follow, Unfollow, Update, Broadcast)
+  , RawEvent
+  , SequencedEvent (SequencedEvent)
+  , eventRaw
+  , parseRawEvent
+  )
+import Generators (rawEvent, broadcast, follow, message, unfollow, update)
 
 import Test.Tasty
 import qualified Test.Tasty.QuickCheck as QC
 import qualified Test.Tasty.HUnit as HU
 import Data.Maybe (isNothing)
 
+-- | All tests for the `Event` module.
 eventTests :: TestTree
 eventTests = testGroup "Event" [parseRawEventTests]
 
@@ -19,12 +26,15 @@ parseRawEventTests = testGroup "parseRawEvent"
   , parseRawEventProps
   ]
 
+-- | Internal only. Failure cases for `parseRawEvent`.
 parseRawEventUnitTests :: TestTree
 parseRawEventUnitTests = testGroup "Unit Tests"
   [ HU.testCase "does not parse blank string"             $ noParse ""
   , HU.testCase "does not parse \"corrupted\""            $ noParse "corrupted"
   , HU.testCase "does not parse without delimiters"       $ noParse "43P3256"
   , HU.testCase "does not parse with wrong delimiters"    $ noParse "43 P,32/56"
+  , HU.testCase "does not parse with leading delimiter"   $ noParse "|43|P|32|56"
+  , HU.testCase "does not parse with trailing delimiter"  $ noParse "43|P|32|56|"
   , HU.testCase "does not parse with < two fields"        $ noParse "12345"
   , HU.testCase "does not parse with > four fields"       $ noParse "3|P|2|6|5"
   , HU.testCase "does not parse with trailing text"       $ noParse "43|Bmore"
@@ -43,17 +53,25 @@ parseRawEventUnitTests = testGroup "Unit Tests"
 noParse :: RawEvent -> HU.Assertion
 noParse raw = isNothing (parseRawEvent raw) HU.@?= True
 
+-- | Internal only. Invariant properties of `parseRawEvent`.
 parseRawEventProps :: TestTree
 parseRawEventProps = testGroup "Properties"
-  [ QC.testProperty "classifies follows"          propParseFollow
-  , QC.testProperty "classifies unfollows"        propParseUnfollow
-  , QC.testProperty "classifies broadcasts"       propParseBroadcast
-  , QC.testProperty "classifies private messages" propParseMessage
-  , QC.testProperty "classifies status updates"   propParseUpdate
-  , QC.testProperty "parses sequence number"      propParseSequenceNum
-  , QC.testProperty "parses user ids"             propParseUsers
-  , QC.testProperty "preserves raw input"         propParsePreserves
+  [ QC.testProperty "identifies private message events" propParseMessage
+  , QC.testProperty "identifies follow events"          propParseFollow
+  , QC.testProperty "identifies unfollow events"        propParseUnfollow
+  , QC.testProperty "identifies status update events"   propParseUpdate
+  , QC.testProperty "identifies broadcast events"       propParseBroadcast
+  , QC.testProperty "reads the event's sequence number" propParseSequenceNumber
+  , QC.testProperty "reads all the event's user ids"    propParseUserIds
+  , QC.testProperty "preserves the event's raw input"   propParsePreserves
   ]
+
+propParseMessage :: QC.Property
+propParseMessage =
+  QC.forAll message $ maybe False isMessage . parseRawEvent
+      where
+  isMessage (SequencedEvent _ Message{}) = True
+  isMessage _                            = False
 
 propParseFollow :: QC.Property
 propParseFollow =
@@ -69,20 +87,6 @@ propParseUnfollow =
   isUnfollow (SequencedEvent _ Unfollow{}) = True
   isUnfollow _                             = False
 
-propParseBroadcast :: QC.Property
-propParseBroadcast =
-  QC.forAll broadcast $ maybe False isBroadcast . parseRawEvent
-      where
-  isBroadcast (SequencedEvent _ Broadcast{}) = True
-  isBroadcast _                              = False
-
-propParseMessage :: QC.Property
-propParseMessage =
-  QC.forAll message $ maybe False isMessage . parseRawEvent
-      where
-  isMessage (SequencedEvent _ Message{}) = True
-  isMessage _                            = False
-
 propParseUpdate :: QC.Property
 propParseUpdate =
   QC.forAll update $ maybe False isUpdate . parseRawEvent
@@ -90,22 +94,29 @@ propParseUpdate =
   isUpdate (SequencedEvent _ (Update _ _)) = True
   isUpdate _                               = False
 
-propParseSequenceNum :: QC.Property
-propParseSequenceNum =
+propParseBroadcast :: QC.Property
+propParseBroadcast =
+  QC.forAll broadcast $ maybe False isBroadcast . parseRawEvent
+      where
+  isBroadcast (SequencedEvent _ Broadcast{}) = True
+  isBroadcast _                              = False
+
+propParseSequenceNumber :: QC.Property
+propParseSequenceNumber =
   QC.forAll rawEvent $ maybe True <$> correctSequenceNum <*> parseRawEvent
       where
   correctSequenceNum r (SequencedEvent s _) = show s == takeWhile (/= '|') r
 
-propParseUsers :: QC.Property
-propParseUsers =
-  QC.forAll rawEvent $ maybe True <$> correctUser <*> parseRawEvent
+propParseUserIds :: QC.Property
+propParseUserIds =
+  QC.forAll rawEvent $ maybe True <$> correctUserIds <*> parseRawEvent
       where
-  correctUser raw (SequencedEvent _ e) = correctUser' raw e
-  correctUser' r (Follow    _ f t) = fmap show [f, t] == twoUserIds r
-  correctUser' r (Unfollow  _ f t) = fmap show [f, t] == twoUserIds r
-  correctUser' r (Message   _ f t) = fmap show [f, t] == twoUserIds r
-  correctUser' r (Update    _ f  ) = show f == lastUserId r
-  correctUser' _ _                 = True
+  correctUserIds raw (SequencedEvent _ e) = correctUserIds' raw e
+  correctUserIds' r (Follow    _ f t) = fmap show [f, t] == twoUserIds r
+  correctUserIds' r (Unfollow  _ f t) = fmap show [f, t] == twoUserIds r
+  correctUserIds' r (Message   _ f t) = fmap show [f, t] == twoUserIds r
+  correctUserIds' r (Update    _ f  ) = show f == lastUserId r
+  correctUserIds' _ _                 = True
   twoUserIds = sequenceA [secondToLastUserId, lastUserId]
   lastUserId = reverse . takeWhile (/= '|') . reverse
   secondToLastUserId =

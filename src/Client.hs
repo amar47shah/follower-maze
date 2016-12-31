@@ -1,6 +1,8 @@
--- | Module
+-- | `Client`,
+-- a data structure representing a connection that receives notifications.
 module Client
-  ( Client (clientUserId)
+  ( Client
+  , clientUserId
   , beNotified
   , newClient
   , sendMessage
@@ -13,23 +15,30 @@ import Control.Monad (forever)
 import Control.Monad.STM (STM, atomically)
 import System.IO (Handle, hPutStrLn)
 
--- | Exported
+-- | Comprises a connected client's
+--
+-- * user identifier
+-- * connection handle, and
+-- * channel for receiving notifications.
 data Client = Client
-  { clientUserId :: UserId
+  { clientUserId :: UserId         -- ^ Return the `Client`'s user identifier.
   , clientHandle :: Handle
   , clientChan   :: TChan RawEvent
   }
 
--- | Exported
-beNotified :: Client -> IO ()
+-- | Given a `Client`, forever read messages from its message channel and
+-- write them to its handle.
+beNotified :: Client -> IO a
 beNotified c = forever $ do
   msg <- atomically . readTChan $ clientChan c
   hPutStrLn (clientHandle c) msg
 
--- | Exported
+-- | Returns an STM action to create a new `Client` with the
+-- given user identifier and handle.
 newClient :: UserId -> Handle -> STM Client
 newClient u h = Client u h <$> newTChan
 
--- | Exported
+-- | Returns an STM action to write the given notification to the
+-- given `Client`'s message channel.
 sendMessage :: RawEvent -> Client -> STM ()
 sendMessage n c = writeTChan (clientChan c) n

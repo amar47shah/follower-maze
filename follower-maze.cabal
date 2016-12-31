@@ -1,6 +1,6 @@
 name:                follower-maze
 version:             0.1.0.0
-synopsis:            Initial project template from stack
+synopsis:            SoundCloud Backend Developer Challenge
 description:         Please see README.md
 homepage:            https://github.com/amar47shah/follower-maze#readme
 license:             BSD3
@@ -8,7 +8,7 @@ license-file:        LICENSE
 author:              Amar Shah
 maintainer:          amar47shah@gmail.com
 copyright:           2016 Amar Shah
-category:            Web
+category:            Network
 build-type:          Simple
 extra-source-files:  README.md
 cabal-version:       >=1.10
