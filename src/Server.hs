@@ -11,7 +11,7 @@ import Client (Client, clientUserId, newClient, beNotified, sendMessage)
 
 import qualified Data.Map as Map
 import qualified Data.Set as Set
-import Control.Concurrent.STM.TVar (TVar, newTVarIO, modifyTVar', readTVar)
+import Control.Concurrent.STM.TVar (TVar, newTVarIO, modifyTVar', readTVar, writeTVar)
 import Control.Exception (bracket)
 import Control.Monad (forM_)
 import Control.Monad.STM (STM, atomically)
@@ -46,9 +46,13 @@ acquireClient server handle = do
 
 registerClient :: Server -> Handle -> UserId -> IO (Maybe Client)
 registerClient server handle userId = atomically $ do
-  client <- newClient userId handle
-  modifyTVar' (connections server) $ Map.insert userId client
-  pure $ Just client
+  conns <- readTVar (connections server)
+  if Map.member userId conns
+  then pure Nothing
+  else do
+    client <- newClient userId handle
+    writeTVar (connections server) $ Map.insert userId client conns
+    pure $ Just client
 
 releaseClient :: Server -> Maybe Client -> IO ()
 releaseClient server maybeClient =

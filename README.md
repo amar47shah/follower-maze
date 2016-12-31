@@ -1,11 +1,4 @@
-Unhandled issues:
-
-* What if a client connects with a user id already in use?
-
 Future work:
-
-* Error handling
-  * handle common scenarios, like those above
 
 * Restricting duplicates
   * filter exact duplicates in the result of dequeueAll
