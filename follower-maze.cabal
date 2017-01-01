@@ -15,11 +15,11 @@ cabal-version:       >=1.10
 
 library
   hs-source-dirs:      src
-  exposed-modules:     Client
-                     , Config
-                     , Event
-                     , EventQueue
-                     , Server
+  exposed-modules:     FollowerMaze.Client
+                     , FollowerMaze.Config
+                     , FollowerMaze.Event
+                     , FollowerMaze.EventQueue
+                     , FollowerMaze.Server
   build-depends:       base >= 4.7 && < 5
                      , containers
                      , safe
@@ -38,10 +38,10 @@ executable follower-maze-exe
 test-suite follower-maze-test
   type:                exitcode-stdio-1.0
   hs-source-dirs:      test
-  main-is:             Test.hs
-  other-modules:       EventTest
-                     , EventQueueTest
-                     , Generators
+  main-is:             Main.hs
+  other-modules:       FollowerMaze.EventTest
+                     , FollowerMaze.EventQueueTest
+                     , FollowerMaze.Test.Generators
   build-depends:       base
                      , follower-maze
                      , tasty

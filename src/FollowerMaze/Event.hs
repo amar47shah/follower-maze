@@ -1,6 +1,6 @@
 -- | `Event` and the associated types `RawEvent`, `SequencedEvent`,
 -- `SequenceNumber`, and `UserId` represent raw and parsed event data.
-module Event
+module FollowerMaze.Event
   ( Event (Message, Follow, Unfollow, Update, Broadcast)
   , UserId
   , RawEvent

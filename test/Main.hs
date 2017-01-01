@@ -1,7 +1,7 @@
 module Main where
 
-import EventTest (eventTests)
-import EventQueueTest (eventQueueTests)
+import FollowerMaze.EventTest (eventTests)
+import FollowerMaze.EventQueueTest (eventQueueTests)
 
 import Test.Tasty
 import Control.Monad (replicateM_)

@@ -1,7 +1,7 @@
 -- | Random QuickCheck generators for loaded `eventQueue`s and correctly formed
 -- `rawEvent`s. Generators are provided for specific raw events:
 -- `message`, `follow`, `unfollow`, `update`, and `broadcast`.
-module Generators
+module FollowerMaze.Test.Generators
   ( eventQueue
   , rawEvent
   , message
@@ -11,9 +11,9 @@ module Generators
   , broadcast
   ) where
 
-import Config (numberOfUsers, totalEvents)
-import Event (RawEvent, SequenceNumber)
-import EventQueue (EventQueue, emptyQueue, enqueueRaw, newQueueAt)
+import FollowerMaze.Config (numberOfUsers, totalEvents)
+import FollowerMaze.Event (RawEvent, SequenceNumber)
+import FollowerMaze.EventQueue (EventQueue, emptyQueue, enqueueRaw, newQueueAt)
 
 import qualified Test.Tasty.QuickCheck as QC
 import Control.Monad (replicateM)
@@ -48,7 +48,7 @@ update'    = rawEventGen "S" 1
 broadcast' = rawEventGen "B" 0
 
 -- | Internal only. Generates a sequence number between @1@ and the value
--- of `Config.totalEvents`.
+-- of `FollowerMaze.Config.totalEvents`.
 sequenceNumber :: QC.Gen SequenceNumber
 sequenceNumber = QC.choose (1, toInteger totalEvents)
 
@@ -104,7 +104,8 @@ eventQueue' initial inputNums =
   rawEventsFromSequenceNumbers :: QC.Gen [SequenceNumber] -> QC.Gen [RawEvent]
   rawEventsFromSequenceNumbers ns = ns >>= sequenceA . fmap rawEvent'
 
--- | Internal only. Always generates a (non-offset) `EventQueue.emptyQueue`.
+-- | Internal only. Always generates
+-- a (non-offset) `FollowerMaze.EventQueue.emptyQueue`.
 alignedNewQueue :: QC.Gen EventQueue
 alignedNewQueue = pure emptyQueue
 

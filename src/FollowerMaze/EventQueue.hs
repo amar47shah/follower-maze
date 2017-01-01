@@ -3,7 +3,7 @@
 --
 -- * `enqueueRaw`: parse a raw event and insert its structured data into the queue.
 -- * `dequeueAll`: remove and return all ready events in ascending sequence.
-module EventQueue
+module FollowerMaze.EventQueue
   ( EventQueue (EventQueue)
   , emptyQueue
   , newQueueAt
@@ -12,7 +12,7 @@ module EventQueue
   , Heap
   ) where
 
-import Event
+import FollowerMaze.Event
   ( Event
   , RawEvent
   , SequencedEvent (SequencedEvent)

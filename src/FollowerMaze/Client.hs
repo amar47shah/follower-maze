@@ -1,6 +1,6 @@
 -- | `Client`,
 -- a data structure representing a connection that receives notifications.
-module Client
+module FollowerMaze.Client
   ( Client
   , clientUserId
   , beNotified
@@ -8,7 +8,7 @@ module Client
   , sendMessage
   ) where
 
-import Event (RawEvent, UserId)
+import FollowerMaze.Event (RawEvent, UserId)
 
 import Control.Concurrent.STM.TChan (TChan, newTChan, readTChan, writeTChan)
 import Control.Monad (forever)

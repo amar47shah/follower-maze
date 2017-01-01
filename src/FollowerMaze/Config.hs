@@ -3,7 +3,7 @@
 -- `eventListenerPort` and `clientListenerPort` are used by the application.
 --
 -- `numberOfUsers` and `totalEvents` are only used in tests.
-module Config
+module FollowerMaze.Config
   ( eventListenerPort
   , clientListenerPort
   , numberOfUsers

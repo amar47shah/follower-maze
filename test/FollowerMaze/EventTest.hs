@@ -1,15 +1,22 @@
-module EventTest
+module FollowerMaze.EventTest
   ( eventTests
   ) where
 
-import Event
+import FollowerMaze.Event
   ( Event (Message, Follow, Unfollow, Update, Broadcast)
   , RawEvent
   , SequencedEvent (SequencedEvent)
   , eventRaw
   , parseRawEvent
   )
-import Generators (rawEvent, broadcast, follow, message, unfollow, update)
+import FollowerMaze.Test.Generators
+  ( rawEvent
+  , broadcast
+  , follow
+  , message
+  , unfollow
+  , update
+  )
 
 import Test.Tasty
 import qualified Test.Tasty.QuickCheck as QC

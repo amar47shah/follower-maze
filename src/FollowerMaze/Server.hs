@@ -5,20 +5,20 @@
 --
 -- `serveEventSource` and `serveUserClient` produce @IO ()@ actions
 -- corresponding to these two tasks, given a `Server` and a connection handle.
-module Server
+module FollowerMaze.Server
   ( Server
   , initServer
   , serveEventSource
   , serveUserClient
   ) where
 
-import Event
+import FollowerMaze.Event
   ( Event (Message, Follow, Unfollow, Update, Broadcast)
   , RawEvent
   , UserId
   )
-import EventQueue (EventQueue, dequeueAll, emptyQueue, enqueueRaw)
-import Client (Client, clientUserId, beNotified, newClient, sendMessage)
+import FollowerMaze.EventQueue (EventQueue, dequeueAll, emptyQueue, enqueueRaw)
+import FollowerMaze.Client (Client, clientUserId, beNotified, newClient, sendMessage)
 
 import qualified Data.Map as Map
 import qualified Data.Set as Set

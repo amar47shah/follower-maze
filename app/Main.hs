@@ -1,7 +1,7 @@
 module Main where
 
-import Config (eventListenerPort, clientListenerPort)
-import Server (initServer, serveEventSource, serveUserClient)
+import FollowerMaze.Config (eventListenerPort, clientListenerPort)
+import FollowerMaze.Server (initServer, serveEventSource, serveUserClient)
 
 import Control.Concurrent (ThreadId, forkFinally)
 import Control.Monad (forever, void)
