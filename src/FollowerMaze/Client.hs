@@ -5,7 +5,7 @@ module FollowerMaze.Client
   , clientUserId
   , beNotified
   , newClient
-  , sendMessage
+  , sendNotification
   ) where
 
 import FollowerMaze.Event (RawEvent, UserId)
@@ -26,19 +26,25 @@ data Client = Client
   , clientChan   :: TChan RawEvent
   }
 
--- | Given a `Client`, forever read messages from its message channel and
--- write them to its handle.
+-- | Given a `Client`, forever read notifications from its channel and
+-- deliver them to its handle.
 beNotified :: Client -> IO a
-beNotified c = forever $ do
-  msg <- atomically . readTChan $ clientChan c
-  hPutStrLn (clientHandle c) msg
+beNotified client = forever $
+  deliver client =<< atomically (readClientChan client)
+
+-- | Internal only. Write a notification to a client's handle.
+deliver :: Client -> RawEvent -> IO ()
+deliver = hPutStrLn . clientHandle
+
+-- | Internal only. Read from the client's channel.
+readClientChan :: Client -> STM RawEvent
+readClientChan = readTChan . clientChan
 
 -- | Returns an STM action to create a new `Client` with the
 -- given user identifier and handle.
 newClient :: UserId -> Handle -> STM Client
 newClient u h = Client u h <$> newTChan
 
--- | Returns an STM action to write the given notification to the
--- given `Client`'s message channel.
-sendMessage :: RawEvent -> Client -> STM ()
-sendMessage n c = writeTChan (clientChan c) n
+-- | Returns an STM action to write the a notification to a `Client`'s channel.
+sendNotification :: RawEvent -> Client -> STM ()
+sendNotification n c = writeTChan (clientChan c) n

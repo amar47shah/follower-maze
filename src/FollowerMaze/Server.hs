@@ -12,13 +12,19 @@ module FollowerMaze.Server
   , serveUserClient
   ) where
 
+import FollowerMaze.Client
+  ( Client
+  , clientUserId
+  , beNotified
+  , newClient
+  , sendNotification
+  )
 import FollowerMaze.Event
   ( Event (Message, Follow, Unfollow, Update, Broadcast)
   , RawEvent
   , UserId
   )
 import FollowerMaze.EventQueue (EventQueue, dequeueAll, emptyQueue, enqueueRaw)
-import FollowerMaze.Client (Client, clientUserId, beNotified, newClient, sendMessage)
 
 import qualified Data.Map as Map
 import qualified Data.Set as Set
@@ -67,10 +73,10 @@ initServer = Server emptyQueue <$> newTVarIO Map.empty <*> newTVarIO Map.empty
 --   4. When the client disconnects, remove it from the directory of clients.
 serveUserClient :: Server -> Handle -> IO ()
 serveUserClient server handle =
-  bracket (acquireClient server handle) (releaseClient server) serveUserClient'
+  bracket (acquireClient server handle) (releaseClient server) runClient
       where
-  serveUserClient' :: Maybe Client -> IO ()
-  serveUserClient' = maybe (pure ()) beNotified
+  runClient :: Maybe Client -> IO ()
+  runClient = maybe (pure ()) beNotified
 
 -- | Internal only. Attempt to read a user identifier from the client connection,
 -- and if successful, register the client.
@@ -80,7 +86,7 @@ acquireClient server handle = do
   maybe (pure Nothing) (registerClient server handle) maybeUserId
 
 -- | Internal only. If the given user identifier is available, initialize a
--- `Client` and add an entry to the server's directory of clients.
+-- `Client` and add it to the server's clients directory.
 registerClient :: Server -> Handle -> UserId -> IO (Maybe Client)
 registerClient server handle userId = atomically $ do
   connections <- readTVar (clients server)
@@ -93,11 +99,10 @@ registerClient server handle userId = atomically $ do
 
 -- | Internal only. Remove a client from the server's directory of clients.
 releaseClient :: Server -> Maybe Client -> IO ()
-releaseClient server = maybe (pure ()) (releaseClient' server)
+releaseClient server = maybe (pure ()) $ atomically . removeClient server
       where
-  releaseClient' :: Server -> Client -> IO ()
-  releaseClient' s c =
-    atomically . modifyTVar' (clients s) . Map.delete $ clientUserId c
+  removeClient :: Server -> Client -> STM ()
+  removeClient s = modifyTVar' (clients s) . Map.delete . clientUserId
 
 -- | * receives a server and a connected event source handle
 --   * returns a process to read events, route notifications to clients,
@@ -139,8 +144,8 @@ readLineAndProcess server handle = do
   forM_ events $ atomically . react newServer
   pure newServer
 
--- | Internal only. Returns a composable STM action to process an event,
--- writing to the server's directory of followers and notifying clients as needed.
+-- | Internal only. Returns an STM action to process an event,
+-- which may involve updating the followers directory or notifying clients.
 react :: Server -> Event -> STM ()
 react s (Message   raw _    to) =                           notify    s raw to
 react s (Follow    raw from to) = follow       s from to *> notify    s raw to
@@ -148,54 +153,48 @@ react s (Unfollow  _   from to) = unfollow     s from to
 react s (Update    raw from   ) = getFollowers s from   >>= notifyAll s raw
 react s (Broadcast raw        ) = allUsers     s        >>= notifyAll s raw
 
--- | Internal only. Returns an STM action to look up a user's followers in
--- the supplied server's directory.
+-- | Internal only. Returns an STM action to look up a user's followers.
 getFollowers :: Server -> UserId -> STM (Set UserId)
 getFollowers s f = Map.findWithDefault Set.empty f <$> readTVar (followers s)
 
--- | Internal only. Returns an STM action to produce the set of all connected
--- clients' user identifiers.
+-- | Internal only. Returns an STM action to get all user identifiers
+-- of connected clients.
 allUsers :: Server -> STM (Set UserId)
 allUsers s = Map.keysSet <$> readTVar (clients s)
 
--- | Internal only. Returns an STM action to look up the given
--- user identifier in the supplied server, and if a connected client is found,
--- write the given notification to the client.
+-- | Internal only. Returns an STM action to look up a client connection
+-- from a user identifier, and send a notification to the client, if found.
 notify :: Server -> RawEvent -> UserId -> STM ()
 notify s r t = readTVar (clients s)
-           >>= maybe (pure ()) (sendMessage r) . Map.lookup t
+           >>= maybe (pure ()) (sendNotification r) . Map.lookup t
 
--- | Internal only. Returns an STM action to write the given notification
--- to the given group of users, using the supplied server.
+-- | Internal only. Returns an STM action to send a notification to a
+-- group of users, using the supplied server to look up client connections.
 notifyAll :: Server -> RawEvent -> Set UserId -> STM ()
 notifyAll s r ts = forM_ ts $ notify s r
 
--- | Internal only. Returns an STM action to modify the server's
--- directory of followers to add a follower.
+-- | Internal only. Returns an STM action to add a follower.
 follow ::
      Server
   -> UserId -- ^ follower
   -> UserId -- ^ followed
   -> STM ()
-follow s f = modifyTVar' (followers s) . Map.alter (addFollower f)
+follow s f = modifyTVar' (followers s) . Map.alter (insert f)
+      where
+  -- If the set is given, insert the element.
+  -- If not, return a singleton set containing the element.
+  insert :: Ord a => a -> Maybe (Set a) -> Maybe (Set a)
+  insert x = Just . Set.insert x . fromMaybe Set.empty
 
--- | Internal only. Returns an STM action to modify the server's
--- directory of followers to remove a follower.
+-- | Internal only. Returns an STM action to remove a follower.
 unfollow ::
      Server
   -> UserId -- ^ unfollower
   -> UserId -- ^ unfollowed
   -> STM ()
-unfollow s f = modifyTVar' (followers s) . Map.alter (removeFollower f)
-
--- | Internal only. Receives an element and a `Maybe`-wrapped set of elements.
--- If the set is given, return it with the element inserted.
--- If not, return a singleton set containing the element.
-addFollower :: Ord a => a -> Maybe (Set a) -> Maybe (Set a)
-addFollower f = Just . Set.insert f . fromMaybe Set.empty
-
--- | Internal only. Receives an element and a `Maybe`-wrapped set of elements.
--- If the set is given, return it without the element, removing it if necessary.
--- If the set is not given, return `Nothing`.
-removeFollower :: Ord a => a -> Maybe (Set a) -> Maybe (Set a)
-removeFollower f mfs = Set.delete f <$> mfs
+unfollow s f = modifyTVar' (followers s) . Map.alter (delete f)
+      where
+  -- If the set is given, remove the element if found.
+  -- If not, return `Nothing`.
+  delete :: Ord a => a -> Maybe (Set a) -> Maybe (Set a)
+  delete x = fmap $ Set.delete x

@@ -78,10 +78,10 @@ instance Ord SequencedEvent where
 -- @
 -- | raw           | parseRawEvent raw                                            |
 -- |---------------|--------------------------------------------------------------|
--- | "43|P|32|56"  | Just (SequencedEvent 43     (Message   "43|P|32|56"  32 56)) |
--- | "666|F|60|50" | Just (SequencedEvent 666    (Follow    "666|F|60|50" 60 50)) |
--- | "1|U|12|9"    | Just (SequencedEvent 1      (Unfollow  "1|U|12|9"    12  9)) |
--- | "634|S|32"    | Just (SequencedEvent 634    (Update    "634|S|32"    32   )) |
+-- | "43|P|32|56"  | Just (SequencedEvent     43 (Message   "43|P|32|56"  32 56)) |
+-- | "666|F|60|50" | Just (SequencedEvent    666 (Follow    "666|F|60|50" 60 50)) |
+-- | "1|U|12|9"    | Just (SequencedEvent      1 (Unfollow  "1|U|12|9"    12  9)) |
+-- | "634|S|32"    | Just (SequencedEvent    634 (Update    "634|S|32"    32   )) |
 -- | "542532|B"    | Just (SequencedEvent 542532 (Broadcast "542532|B"         )) |
 -- | "P|32|56"     | Nothing                                                      |
 -- | "43,P,32,56"  | Nothing                                                      |
