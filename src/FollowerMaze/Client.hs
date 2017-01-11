@@ -45,6 +45,6 @@ readClientChan = readTChan . clientChan
 newClient :: UserId -> Handle -> STM Client
 newClient u h = Client u h <$> newTChan
 
--- | Returns an STM action to write the a notification to a `Client`'s channel.
+-- | Returns an STM action to write a notification to a `Client`'s channel.
 sendNotification :: RawEvent -> Client -> STM ()
 sendNotification n c = writeTChan (clientChan c) n
