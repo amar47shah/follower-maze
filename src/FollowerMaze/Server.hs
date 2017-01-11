@@ -147,11 +147,11 @@ readLineAndProcess server handle = do
 -- | Internal only. Returns an STM action to process an event,
 -- which may involve updating the followers directory or notifying clients.
 react :: Server -> Event -> STM ()
-react s (Message   raw _    to) =                           notify    s raw to
-react s (Follow    raw from to) = follow       s from to *> notify    s raw to
+react s (Message   raw _    to) =                            notify    s raw to
+react s (Follow    raw from to) = follow       s from to *>  notify    s raw to
 react s (Unfollow  _   from to) = unfollow     s from to
-react s (Update    raw from   ) = getFollowers s from   >>= notifyAll s raw
-react s (Broadcast raw        ) = allUsers     s        >>= notifyAll s raw
+react s (Update    raw from   ) = getFollowers s from    >>= notifyAll s raw
+react s (Broadcast raw        ) = allUsers     s         >>= notifyAll s raw
 
 -- | Internal only. Returns an STM action to look up a user's followers.
 getFollowers :: Server -> UserId -> STM (Set UserId)
