@@ -1,6 +1,22 @@
 # Follower Maze
 
-SoundCloud Backend Developer Challenge solution
+The challenge solved here is to build a system which acts as a socket
+server, reading events from an *event source* and forwarding them when
+appropriate to *user clients*.
+
+Clients connect through TCP and use the simple protocol described in a
+section below. There are two types of clients connecting to the server:
+
+- **One** *event source*: This sends a
+stream of events which may or may not require clients to be notified
+- **Many** *user clients*: Each one representing a specific user,
+these wait for notifications for the events that are relevant to the
+user they represent
+
+Included in the `instructions` folder is a jar file and a shell script.
+These contain one possible implementation of the *event source* and *user client*.
+
+A full specification is given in the `instructions/instructions.md`.
 
 ## Setup
 
@@ -10,7 +26,21 @@ SoundCloud Backend Developer Challenge solution
 
 ## Usage
 
-`stack build && stack exec follower-maze-exe`
+In one console, run this project:
+
+    stack build && stack exec follower-maze-exe
+
+In another console, run the provided test input script:
+
+    cd instructions
+    ./followermaze.sh
+
+With special configurations:
+
+    cd instructions
+    totalEvents=1000 concurrencyLevel=200 ./followermaze.sh
+
+For more information, see the `instructions/instructions.md`
 
 ## Dependencies
 
