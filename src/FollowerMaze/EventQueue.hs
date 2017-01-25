@@ -46,7 +46,7 @@ enqueueRaw q = maybe q (enqueue q) . parseRawEvent
 enqueue :: EventQueue -> SequencedEvent -> EventQueue
 enqueue (EventQueue n h) se = EventQueue n $ insert se h
 
--- | Return all dequeueable events in ascending sequence order /and/
+-- | Returns all dequeueable events in ascending sequence order /and/
 -- the resulting queue.
 --
 -- The returned events are removed from the accompanying queue, and the queue's
@@ -83,7 +83,7 @@ dequeue queue =
       EQ -> Just (e, EventQueue (succ n) $ deleteMin h)
       _  -> Nothing
 
--- | Internal only. Return the smallest `SequencedEvent` in the queue,
+-- | Internal only. Returns the smallest `SequencedEvent` in the queue,
 -- without dequeueing.
 next :: EventQueue -> Maybe SequencedEvent
 next (EventQueue _ h) = findMin h

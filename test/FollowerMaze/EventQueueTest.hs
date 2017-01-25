@@ -58,7 +58,7 @@ propDequeueAllTwiceEmpty :: QC.Property
 propDequeueAllTwiceEmpty =
   QC.forAll eventQueue $ null . fst . dequeueAll . snd . dequeueAll
 
--- | Internal only. Return the sequence number from the raw representation
+-- | Internal only. Returns the sequence number from the raw representation
 -- stored in an `Event`.
 --
 -- Development and testing only.

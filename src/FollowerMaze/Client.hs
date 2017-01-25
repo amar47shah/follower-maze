@@ -21,7 +21,7 @@ import System.IO (Handle, hPutStrLn)
 -- * connection handle, and
 -- * channel for receiving notifications.
 data Client = Client
-  { clientUserId :: UserId         -- ^ Return the `Client`'s user identifier.
+  { clientUserId :: UserId         -- ^ Returns the `Client`'s user identifier.
   , clientHandle :: Handle
   , clientChan   :: TChan RawEvent
   }

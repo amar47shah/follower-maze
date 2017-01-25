@@ -35,7 +35,7 @@ type UserId   = Integer
 -- | All or part of an unparsed event.
 type RawEvent = String
 
--- | Return the unparsed representation of a parsed event.
+-- | Returns the unparsed representation of a parsed event.
 eventRaw :: Event -> RawEvent
 eventRaw (Message   r _ _) = r
 eventRaw (Follow    r _ _) = r
